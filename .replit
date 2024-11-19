@@ -1,5 +1,5 @@
 modules = ["nodejs-16", "nodejs-20", "web"]
-run = "npm run start"
+run = "pnpm i && pnpm start"
 
 [nix]
 channel = "stable-24_05"

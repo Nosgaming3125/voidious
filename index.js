@@ -25,24 +25,30 @@ app.use(cors({ origin: true }));
 app.get("/e/*", async (req, res, next) => {
   try {
     // Your logic for handling the `/e/*` route
+    const data = "Some data";  // Example, replace with real logic
+    res.send(data);
   } catch (error) {
     res.status(500).send("Error fetching asset");
   }
 });
 
+// Authentication Middleware (optional)
 if (config.challenge) {
   app.use(basicAuth({ users: config.users, challenge: true }));
 }
 
+// Setup MASQR if enabled
 if (process.env.MASQR === "true") {
   setupMasqr(app);
 }
 
-// Fallback route
+// Fallback route for handling 404
 app.use((req, res) => {
   res.status(404).send("Not Found");
 });
 
-export default function handler(req, res) {
+// The export for serverless platform (like Vercel)
+export default (req, res) => {
+  // Instead of app(req, res), we use app.handle(req, res) for compatibility
   app(req, res);
-}
+};

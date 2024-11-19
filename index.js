@@ -1,6 +1,6 @@
-import { createBareServer } from "@tomphttp/bare-server-node";
 import http from "node:http";
 import path from "node:path";
+import { createBareServer } from "@tomphttp/bare-server-node";
 import chalk from "chalk";
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -11,12 +11,9 @@ import fetch from "node-fetch";
 import { setupMasqr } from "./Masqr.js";
 import config from "./config.js";
 
-// Set __dirname manually for ES modules
-const __dirname = path.resolve();
-
-// Start the server
 console.log(chalk.yellow("🚀 Starting server..."));
 
+const __dirname = path.resolve();  // Define __dirname in ES module context
 const server = http.createServer();
 const app = express();
 const bareServer = createBareServer("/ov/");
@@ -24,18 +21,17 @@ const PORT = process.env.PORT || 8080;
 const cache = new Map();
 const CACHE_TTL = 30 * 24 * 60 * 60 * 1000; // Cache for 30 Days
 
-// Enable Basic Auth if challenge is enabled
 if (config.challenge) {
   console.log(
     chalk.green("🔒 Password protection is enabled! Listing logins below"),
   );
+  // biome-ignore lint/complexity/noForEach:
   Object.entries(config.users).forEach(([username, password]) => {
     console.log(chalk.blue(`Username: ${username}, Password: ${password}`));
   });
   app.use(basicAuth({ users: config.users, challenge: true }));
 }
 
-// Cache handling for /e/* route
 app.get("/e/*", async (req, res, next) => {
   try {
     if (cache.has(req.path)) {
@@ -63,12 +59,13 @@ app.get("/e/*", async (req, res, next) => {
     }
 
     if (!reqTarget) {
-      return next();
+      return next(); // Forward to next middleware if no matching route
     }
 
     const asset = await fetch(reqTarget);
     if (!asset.ok) {
-      return next();
+      console.error(`Failed to fetch asset from ${reqTarget}`);
+      return res.status(500).send("Error fetching the asset");
     }
 
     const data = Buffer.from(await asset.arrayBuffer());
@@ -82,21 +79,23 @@ app.get("/e/*", async (req, res, next) => {
     res.writeHead(200, { "Content-Type": contentType });
     res.end(data);
   } catch (error) {
-    console.error("Error fetching asset:", error);
+    console.error("Error in /e/* route:", error);
     res.setHeader("Content-Type", "text/html");
-    res.status(500).send("Error fetching the asset");
+    res.status(500).send("Error processing the request");
   }
 });
 
-// Middleware Setup
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files
-app.use(express.static(path.join(__dirname, "static")));
+if (process.env.MASQR === "true") {
+  setupMasqr(app);
+}
 
-// Routes for HTML files
+app.use(express.static(path.join(__dirname, "static")));
+app.use("/ov", cors({ origin: true }));
+
 const routes = [
   { path: "/as", file: "apps.html" },
   { path: "/gm", file: "games.html" },
@@ -108,25 +107,22 @@ const routes = [
   { path: "/privacy", file: "privacy.html" },
 ];
 
-// Define routes to serve static HTML files
+// biome-ignore lint/complexity/noForEach:
 routes.forEach(route => {
   app.get(route.path, (_req, res) => {
     res.sendFile(path.join(__dirname, "static", route.file));
   });
 });
 
-// Fallback route for 404
-app.use((req, res) => {
+app.use((req, res, next) => {
   res.status(404).sendFile(path.join(__dirname, "static", "404.html"));
 });
 
-// Error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).sendFile(path.join(__dirname, "static", "404.html"));
 });
 
-// Set up Bare Server for routing other requests
 server.on("request", (req, res) => {
   if (bareServer.shouldRoute(req)) {
     bareServer.routeRequest(req, res);
@@ -135,7 +131,6 @@ server.on("request", (req, res) => {
   }
 });
 
-// Upgrade WebSocket handler for Bare Server
 server.on("upgrade", (req, socket, head) => {
   if (bareServer.shouldRoute(req)) {
     bareServer.routeUpgrade(req, socket, head);
@@ -144,10 +139,8 @@ server.on("upgrade", (req, socket, head) => {
   }
 });
 
-// Log when the server is listening
 server.on("listening", () => {
   console.log(chalk.green(`🌍 Server is running on http://localhost:${PORT}`));
 });
 
-// Start the server
 server.listen({ port: PORT });

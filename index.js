@@ -16,24 +16,21 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: true }));
 
-// Routes and logic for the app
-app.get("/e/*", async (req, res, next) => {
-  try {
-    // Your logic for handling the `/e/*` route
-  } catch (error) {
-    res.status(500).send("Error fetching asset");
-  }
+// Example routes (Ensure these paths match what you're trying to access)
+app.get("/e/*", async (req, res) => {
+  // Your logic for handling /e/* route
+  res.send("Handling /e/* route");
 });
 
-if (config.challenge) {
-  app.use(basicAuth({ users: config.users, challenge: true }));
-}
+app.get("/as", (req, res) => {
+  res.send("Apps page");
+});
 
-if (process.env.MASQR === "true") {
-  setupMasqr(app);
-}
+app.get("/gm", (req, res) => {
+  res.send("Games page");
+});
 
-// Fallback route
+// Ensure fallback route is defined
 app.use((req, res) => {
   res.status(404).send("Not Found");
 });

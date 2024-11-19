@@ -9,6 +9,9 @@ import fetch from "node-fetch";
 import { setupMasqr } from "./Masqr.js";  // Adjust path if needed
 import config from "./config.js";  // Adjust path if needed
 
+// Manually define __dirname for ES modules
+const __dirname = path.dirname(new URL(import.meta.url).pathname);
+
 const app = express();
 const bareServer = createBareServer("/ov/");
 
